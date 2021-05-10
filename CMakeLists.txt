@@ -7,7 +7,7 @@ project(reduse VERSION 0.3)
 configure_file(config.h.in config.h @ONLY)
 
 # Get all the source files
-set(SRC)
+set(SRC src/mapper.cpp src/reduser.cpp include/mapper.hpp include/reduser.hpp)
 
 # Add the libary target
 add_library(reduse STATIC ${SRC})
