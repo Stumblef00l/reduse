@@ -3,6 +3,10 @@ cmake_minimum_required(VERSION 3.20)
 # Set the project name
 project(reduse VERSION 0.3)
 
+# Set C++ standard to 17
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+
 # Set the config file
 configure_file(config.h.in config.h @ONLY)
 
