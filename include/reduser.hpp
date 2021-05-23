@@ -14,6 +14,9 @@ namespace reduse {
         std::vector<std::thread> rd_threads;
         std::queue<std::string> rd_queue;
 
+        void reader();
+        void writer();
+
         const std::function<reduse_value(map_key, map_value)> REDUSE;
         const std::function<const int(std::string)> BALANCER;
 
@@ -24,11 +27,11 @@ namespace reduse {
         using reduse_value_type = reduse_value;
 
         Reduser(
-            const int _num_mappers, 
+            const int _num_mappers,
             const std::function<reduse_value(map_key, map_value)>& _REDUSE,
             const std::function<const int(const std::string&)>& _BALANCER
         );
 
         std::vector<reduse_value> run();
-    };
+    };    
 }
