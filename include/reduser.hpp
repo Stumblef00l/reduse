@@ -1,14 +1,34 @@
 #pragma once
-#include <reduse.hpp>
+#include <string>
+#include <vector>
+#include <thread>
+#include <functional>
 
-template<typename K, typename V>
-class reduse::Reduser {
+namespace reduse {
+    template<typename map_key, typename map_value, typename reduse_value>
+    class Reduser {
+    private:
 
-public:
+        const int num_redusers;
 
-    using key_type = K;
-    using value_type = V;
+        std::vector<std::thread> rd_threads;
+        std::queue<std::string> rd_queue;
 
-    virtual void reduse() = 0;
-    virtual void balanse() = 0;
-};
+        const std::function<reduse_value(map_key, map_value)> REDUSE;
+        const std::function<const int(std::string)> BALANCER;
+
+    public:
+
+        using map_key_type = map_key;
+        using map_value_type = map_value;
+        using reduse_value_type = reduse_value;
+
+        Reduser(
+            const int _num_mappers, 
+            const std::function<reduse_value(map_key, map_value)>& _REDUSE,
+            const std::function<const int(const std::string&)>& _BALANCER
+        );
+
+        std::vector<reduse_value> run();
+    };
+}

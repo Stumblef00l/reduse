@@ -1,15 +1,32 @@
 #pragma once
-#include <reduse.hpp>
+#include <vector>
+#include <functional>
+#include <string>
+#include <queue>
+#include <thread>
 
-template<typename K, typename V>
-class reduse::Mapper {
+namespace reduse {
+    template<typename K, typename V>
+    class Mapper {
+    private:
 
-    int numMappers;
+        const int num_mappers;
+        const std::string input_filename;
 
-public:
+        std::vector<std::thread> mp_threads;
+        std::queue<std::string> mp_queue;
 
-    using key_type = K;
-    using value_type = V;
+        const std::function<std::pair<K, V>(const std::string&)> MAP;
+    public:
 
-    virtual void map() = 0;
-};
+        using key_type = K;
+        using value_type = V;
+
+        Mapper(
+            const int _num_mappers, 
+            const std::string& _input_filename, 
+            const std::function<std::pair<K, V>(const std::string&)>& _MAP
+        );
+        void run();
+    };
+}
