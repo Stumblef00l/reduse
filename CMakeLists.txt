@@ -17,6 +17,10 @@ set(HEADERS include/mapper.hpp include/reduser.hpp include/reduse.hpp)
 # Add the libary target
 add_library(reduse STATIC ${SRC} ${HEADERS})
 
+# Fetch libraries
+set(THREADS_PREFERRED_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
 # Set include directory for library
 target_include_directories(reduse PUBLIC ${PROJECT_SOURCE_DIR}/include ${PROJECT_BINARY_DIR})
 
@@ -24,3 +28,11 @@ target_include_directories(reduse PUBLIC ${PROJECT_SOURCE_DIR}/include ${PROJECT
 set_target_properties(reduse PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}
 )
+
+# Set compile options for library
+target_compile_options(reduse PUBLIC
+    "-Wall" "-Werror" "-O"
+)
+
+# Link libraries
+target_link_libraries(reduse PUBLIC Threads::Threads)
