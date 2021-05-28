@@ -2,95 +2,100 @@
 #include <vector>
 #include <queue>
 #include <string>
+#include <iostream>
 #include <fstream>
 #include <functional>
 #include <thread>
 #include <atomic>
+#include <mutex>
 #include <condition_variable>
 #include <exception>
 
 namespace reduse {
-    template<typename key_type, typename value_type>
+    template<typename key, typename value>
     class Mapper {
     private:
 
+        const int num_mappers;
         const std::string input_filename;
         const std::string map_output_filename;
-        std::ofstream map_output_file;
+        const std::function<std::pair<key, value>(const std::string&)> MAP;
 
-        const int num_mappers;
+        std::fstream map_output_file;
         std::atomic_bool isProducerDone;
         std::vector<std::thread> mp_threads;
         std::condition_variable buff_full, buff_empty;
         std::mutex buff_mutex;
         std::mutex output_file_mutex;
+        bool produced;
         std::string buff;
 
-        const std::function<std::pair<key_type, value_type>(const std::string&)> MAP;
 
         void consumer();
         void producer();
 
     public:
 
-        using key_type = key_type;
-        using value_type = value_type;
+        using key_type = key;
+        using value_type = value;
 
         Mapper(
             const int _num_mappers, 
             const std::string& _input_filename,
             const std::string& _map_output_filename,
-            const std::function<std::pair<key_type, value_type>(const std::string&)>& _MAP
+            const std::function<std::pair<key_type, value>(const std::string&)>& _MAP
         );
         void run();
     };
 
     // Constructor
-    template<typename key_type, typename value_type>
-    Mapper<key_type, value_type>::Mapper(
+    template<typename key, typename value>
+    Mapper<key, value>::Mapper(
         const int _num_mappers, 
         const std::string& _input_filename,
         const std::string& _map_output_filename,
-        const std::function<std::pair<key_type, value_type>(const std::string&)>& _MAP
+        const std::function<std::pair<key, value>(const std::string&)>& _MAP
     ):  num_mappers(_num_mappers),
-        input_filename(_filename),
+        input_filename(_input_filename),
         map_output_filename(_map_output_filename), 
         MAP(_MAP), 
         isProducerDone(false),
         mp_threads(std::vector<std::thread>(_num_mappers)) {}
 
     // Main running method
-    template<typename key_type, typename value_type>
-    void Mapper<key_type, value_type>::run() {
+    template<typename key, typename value>
+    void Mapper<key, value>::run() {
         // Initialize variables
         isProducerDone = false;
-        map_output_file.open(map_output_filename);
-        if(!map_output_file)
+        produced = false;
+        map_output_file.open(map_output_filename, std::ios::out);
+        if(!map_output_file.is_open())
             throw std::runtime_error("Cannot open mapper output file: " + map_output_filename);
 
         // Initialize the consumers
         for (auto i = 0; i < num_mappers; i++)
-            mp_threads[i] = std::thread{MAP};
+            mp_threads[i] = std::thread(&Mapper<key, value>::consumer, this);
         
         // Start the producer
-        producer();
+        std::thread producer_thread(&Mapper<key, value>::producer, this);
 
-        // Wait for all the consumers to finish
-        for (auto i = 0; i < num_mappers; i++)
-            mp_threads[i].join();
+        // Wait for threads to finish
+        producer_thread.join();
+        for(auto &consumer_thread: mp_threads)
+            consumer_thread.join();
         
         // Close output file
         map_output_file.close();
     }
 
     // Reads data from the file and gives it over to a mapper to process and write
-    template<typename key_type, typename value_type>
-    void Mapper<key_type, value_type>::producer() {
+    template<typename key, typename value>
+    void Mapper<key, value>::producer() {
         // Open the input file
 
-        std::istream input_file;
-        input_file.open(input_filename);
-        if(!input_file)
+        std::fstream input_file;
+        input_file.open(input_filename, std::ios::in);
+        if(!input_file.is_open())
             throw std::runtime_error("Cannot open mapper input file: " + input_filename);
 
         // Producer starts writing here
@@ -99,8 +104,9 @@ namespace reduse {
         while(std::getline(input_file,input_line)) {
             // Main producer logic
             std::unique_lock producer_lock{buff_mutex};
-            buff_empty.wait(producer_lock, [&]() { return true; });
+            buff_empty.wait(producer_lock, [&]() { return !produced; });
             buff = std::move(input_line);
+            produced = true;
             producer_lock.unlock();
             buff_full.notify_one();
         }
@@ -116,8 +122,8 @@ namespace reduse {
     }
 
     // Map worker
-    template<typename key_type, typename value_type>
-    void Mapper<key_type, value_type>::consumer() {
+    template<typename key, typename value>
+    void Mapper<key, value>::consumer() {
         std::string input_line;
 
         while(!isProducerDone) {
@@ -125,20 +131,20 @@ namespace reduse {
             
             // Get a new line
             std::unique_lock consumer_lock{buff_mutex}; 
-            buff_full.wait(consumer_lock, [&]() { return true; });
-            if (isProducerDone)
+            buff_full.wait(consumer_lock, [&]() { return produced || isProducerDone; });
+            if (isProducerDone && !produced)
                 break;
-            input_line = std::move(buff);   
+            input_line = std::move(buff);
+            produced = false;  
             consumer_lock.unlock();
             buff_empty.notify_one();
 
             // Process new line
-            std::pair<key_type, value_type> new_map_pair = MAP(input_line);
+            auto new_map_pair = MAP(std::ref(input_line));
 
             // Write emitted value to file
-            std::scoped_lock file_lock{file_mutex};
-            output << new_map_pair.first << ", " << new_map_pair.second << std::endl;
-            file_lock.unlock();
+            std::scoped_lock file_lock{output_file_mutex};
+            map_output_file << new_map_pair.first << ", " << new_map_pair.second << std::endl;
         }   
     }
 }
