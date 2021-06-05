@@ -10,6 +10,9 @@
 #include <mutex>
 #include <condition_variable>
 #include <exception>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 namespace reduse {
     template<typename key, typename value>
@@ -181,5 +184,15 @@ namespace reduse {
         map_output_file << "}" << std::endl;
         map_intermediate_file.close();
         map_output_file.close();
+    }
+
+    template<typename key, typename value>
+    void Mapper<key, value>::sortIntermediateFile() {
+        std::string intermediate_file = "intermediate_" + map_output_filename;
+        if(fork() == 0) {
+            execlp("sort", intermediate_file.c_str(), (char*)NULL);
+        } else {
+            wait(NULL);
+        }
     }
 }
