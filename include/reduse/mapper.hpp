@@ -21,7 +21,7 @@ namespace reduse {
         const std::string map_output_filename;
         const std::function<std::pair<key, value>(const std::string&)> MAP;
 
-        std::fstream map_output_file;
+        std::fstream map_intermediate_file;
         std::atomic_bool isProducerDone;
         std::vector<std::thread> mp_threads;
         std::condition_variable buff_full, buff_empty;
@@ -33,6 +33,8 @@ namespace reduse {
 
         void consumer();
         void producer();
+        void sortIntermediateFile();
+        void groupKeys();
 
     public:
 
@@ -68,7 +70,7 @@ namespace reduse {
         // Initialize variables
         isProducerDone = false;
         produced = false;
-        map_output_file.open(map_output_filename, std::ios::out);
+        map_intermediate_file.open("intermediate_" + map_output_filename, std::ios::out);
         if(!map_output_file.is_open())
             throw std::runtime_error("Cannot open mapper output file: " + map_output_filename);
 
@@ -85,7 +87,10 @@ namespace reduse {
             consumer_thread.join();
         
         // Close output file
-        map_output_file.close();
+        map_intermediate_file.close();
+
+        // Group the values in the map_output_file by key
+        groupKeys();
     }
 
     // Reads data from the file and gives it over to a mapper to process and write
@@ -144,7 +149,37 @@ namespace reduse {
 
             // Write emitted value to file
             std::scoped_lock file_lock{output_file_mutex};
-            map_output_file << new_map_pair.first << ", " << new_map_pair.second << std::endl;
+            map_intermediate_file << "<" new_map_pair.first << ">, <" << new_map_pair.second << ">" << std::endl;
         }   
+    }
+
+    template<typename key, typename value>
+    void Mapper<key, value>::groupKeys() {
+        sortIntermediateFile();
+
+        map_intermediate_file.open("intermediate_" + map_output_filename, std::ios::in);
+        std::fstream map_output_file;
+        map_output_file.open(map_output_filename, std::ios::out);
+
+        std::string keyPairLine;
+        std::string prevKey = "";
+
+        while(std::getline(map_intermediate_file, keyPairLine)) {
+            auto pos = keyPairLine.find('>, <');
+            if(pos == std::string::npos)
+                throw std::runtime_error("No , delimiter found for keyPair: " + keyPairLine);
+            std::string newKey = keyPairLine.substr(1, pos - 1);
+            std::string newVal = keyPairLine.substr(pos + 4, keyPairLine.length() - pos - 5);
+            if(newKey.compare(prevKey) == 0)
+                map_output_file << ", " << newVal;
+            else {
+                if(prevKey.length() > 0)
+                   map_output_file << "}" << std::endl;
+                map_output_file << "<" << newKey << ">, " << "{" << newVal;  
+            }
+        }
+        map_output_file << "}" << std::endl;
+        map_intermediate_file.close();
+        map_output_file.close();
     }
 }
