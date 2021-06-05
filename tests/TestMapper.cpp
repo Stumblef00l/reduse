@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <utility>
+#include <vector>
 #include <string>
 #include <exception>
 #include <unordered_map>
@@ -8,9 +9,10 @@
 #include <config.h>
 #include <reduse/mapper.hpp>
 
-std::pair<int, int> MAP(const std::string& s) {
-    int a = (s[0] - '0');
-    int b = (s[1] - '0');
+// Map method for the test TestRun
+std::pair<int, std::string> MAP(const std::string& s) {
+    auto a = (s[0] - '0');
+    auto b = s.substr(1, s.length() - 1);
     return {a, b};
 }
 
@@ -24,34 +26,39 @@ TEST(TestMapper, TestRun) {
 
     // Create the mapper and run it
     try {
-        reduse::Mapper<int, int> mapper = {4, input_filename, output_filename, MAP};
+        reduse::Mapper<int, std::string> mapper = {input_filename, output_filename, MAP, 4};
         mapper.run();
     } catch (const std::exception &e) {
         std::cout << e.what();
         std::terminate();
     }
+
     // Read the file and test it
     std::fstream outfile_reader;
     outfile_reader.open(output_filename, std::ios::in);
     ASSERT_TRUE(outfile_reader.is_open());
 
-    std::string output_line; // Single line of the file
-
     // We will use the these to test the file
     auto ct = 0;
-    std::unordered_map<std::string, int> outfile_map;
+    std::unordered_map<int, std::vector<std::string>> outfile_map;
     
     // Read and add each line to outfile_map
-    while(std::getline(outfile_reader, output_line)) {
+    int key;
+    std::string value;
+    while(outfile_reader >> key) {
         ct++;
-        outfile_map[output_line]++;
+        outfile_reader >> value;
+        outfile_map[key].push_back(value);
     }
 
+    // Close the mapper output file
     outfile_reader.close();
+
+    // Assertions
     ASSERT_FALSE(outfile_reader.is_open());
-    
-    ASSERT_EQ(ct, 2);
-    ASSERT_EQ((int)(outfile_map.size()), 2);
-    ASSERT_TRUE(outfile_map.find("1, 2") != outfile_map.end());
-    ASSERT_TRUE(outfile_map.find("3, 4") != outfile_map.end());
+    ASSERT_EQ(ct, 5);
+    ASSERT_EQ((int)(outfile_map.size()), 3);
+    ASSERT_EQ((int)(outfile_map[1].size()), 2);
+    ASSERT_EQ((int)(outfile_map[2].size()), 1);
+    ASSERT_EQ((int)(outfile_map[3].size()), 2);
 }

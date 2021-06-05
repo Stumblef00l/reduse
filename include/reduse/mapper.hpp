@@ -15,92 +15,122 @@
 #include <unistd.h>
 
 namespace reduse {
+
+    /** @brief Handles the entire map phase
+     * @param key Data type of the key emitted by the MAP method
+     * @param value Data type of the value emitted by the MAP method
+     */
     template<typename key, typename value>
     class Mapper {
     private:
 
-        const int num_mappers;
-        const std::string input_filename;
-        const std::string map_output_filename;
-        const std::function<std::pair<key, value>(const std::string&)> MAP;
+        const std::string input_filename; // Input filename
+        const std::string map_output_filename; // Mapper's intermediate output filename
+        const std::function<std::pair<key, value>(const std::string&)> MAP; // Mapper routine
+        const int num_mappers; // Number of mappers
 
-        std::fstream map_intermediate_file;
-        std::atomic_bool isProducerDone;
-        std::vector<std::thread> mp_threads;
-        std::condition_variable buff_full, buff_empty;
-        std::mutex buff_mutex;
-        std::mutex output_file_mutex;
-        bool produced;
-        std::string buff;
+        std::fstream map_output_file; // Mapper's intermediate output filestream
+        std::atomic_bool isProducerDone; // Indicates if the producer worker is done reading the file
+        std::vector<std::thread> mp_threads; // Mapper workers
+        std::condition_variable buff_full; // Signals if the buffer has an item for a mapper to process
+        std::condition_variable buff_empty; // Signals if the buffer is empty for the producer to put an item into it
+        std::mutex buff_mutex; // Mutex over the buffer
+        std::mutex map_output_file_mutex; // Mutex over the intermediate mapper output file
+        bool produced; // Indicates if the producer has produced a new item into the buffer
+        std::string buff; // Item buffer
 
 
+        /** @brief Mapper worker routine
+         */
         void consumer();
+
+        /** @brief File reader worker routine
+         */
         void producer();
-        void sortIntermediateFile();
-        void groupKeys();
+        
+        /** @brief Sorts the mapper output file for the reduse phase
+         */
+        void sortOutputFile();
 
     public:
 
-        using key_type = key;
-        using value_type = value;
+        using key_type = key; // Alias to access the key type of the Mapper
+        using value_type = value; // Alias to access the value type of the Mapper
 
+        /** @brief Constructor for the Mapper
+         * @param _input_filename Relative or absolute path to the file where the mapper needs to draw the input from
+         * @param _map_output_filename Relative or absolute path to the file where the mapper will store its output for the reduse phase
+         * @param _MAP The mapper function
+         * @param _num_mappers Number of mappers to run concurrently. Set to 1 by default, for no concurrency
+         */
         Mapper(
-            const int _num_mappers, 
             const std::string& _input_filename,
             const std::string& _map_output_filename,
-            const std::function<std::pair<key_type, value>(const std::string&)>& _MAP
+            const std::function<std::pair<key_type, value>(const std::string&)>& _MAP,
+            const int _num_mappers = 1
         );
+
+        /** @brief Routine to run the Mapper instance
+         */
         void run();
     };
-
-    // Constructor
+    
+    // ----- Definitions ------
+    
     template<typename key, typename value>
     Mapper<key, value>::Mapper(
-        const int _num_mappers, 
         const std::string& _input_filename,
         const std::string& _map_output_filename,
-        const std::function<std::pair<key, value>(const std::string&)>& _MAP
-    ):  num_mappers(_num_mappers),
-        input_filename(_input_filename),
+        const std::function<std::pair<key, value>(const std::string&)>& _MAP,
+        const int _num_mappers
+    ):  input_filename(_input_filename),
         map_output_filename(_map_output_filename), 
         MAP(_MAP), 
+        num_mappers(_num_mappers),
         isProducerDone(false),
         mp_threads(std::vector<std::thread>(_num_mappers)) {}
 
-    // Main running method
     template<typename key, typename value>
     void Mapper<key, value>::run() {
+        std::cout << "Starting map phase..." << std::endl;
+
         // Initialize variables
         isProducerDone = false;
         produced = false;
-        map_intermediate_file.open("intermediate_" + map_output_filename, std::ios::out);
+        map_output_file.open(map_output_filename, std::ios::out);
         if(!map_output_file.is_open())
             throw std::runtime_error("Cannot open mapper output file: " + map_output_filename);
 
         // Initialize the consumers
+        std::cout << "Starting mappers..." << std::endl;
         for (auto i = 0; i < num_mappers; i++)
             mp_threads[i] = std::thread(&Mapper<key, value>::consumer, this);
         
         // Start the producer
-        std::thread producer_thread(&Mapper<key, value>::producer, this);
-
+        std::thread producer_thread(&Mapper<key, value>::producer, this);        
+        std::cout << "Mappers executing..." << std::endl;
+        
         // Wait for threads to finish
         producer_thread.join();
         for(auto &consumer_thread: mp_threads)
             consumer_thread.join();
+        std::cout << "Mappers execution complete successfully!" << std::endl;
         
         // Close output file
-        map_intermediate_file.close();
+        map_output_file.close();
 
-        // Group the values in the map_output_file by key
-        groupKeys();
+        // Group the values in the map_output_file by sorting it
+        std::cout << "Grouping values by mapping keys..." << std::endl;
+        sortOutputFile();
+        std::cout << "Grouping completed successfully!" << std::endl;
+
+        // Mapper completed successfully
+        std::cout << "Map phase completed successfully!" << std::endl;
     }
 
-    // Reads data from the file and gives it over to a mapper to process and write
     template<typename key, typename value>
     void Mapper<key, value>::producer() {
         // Open the input file
-
         std::fstream input_file;
         input_file.open(input_filename, std::ios::in);
         if(!input_file.is_open())
@@ -108,7 +138,6 @@ namespace reduse {
 
         // Producer starts writing here
         std::string input_line;
-
         while(std::getline(input_file,input_line)) {
             // Main producer logic
             std::unique_lock producer_lock{buff_mutex};
@@ -129,15 +158,13 @@ namespace reduse {
         input_file.close();
     }
 
-    // Map worker
     template<typename key, typename value>
     void Mapper<key, value>::consumer() {
+        // Consumer repeats till the producer is done
         std::string input_line;
-
         while(!isProducerDone) {
-            // Main consumer logic
             
-            // Get a new line
+            // Wait for a new item to process
             std::unique_lock consumer_lock{buff_mutex}; 
             buff_full.wait(consumer_lock, [&]() { return produced || isProducerDone; });
             if (isProducerDone && !produced)
@@ -151,48 +178,25 @@ namespace reduse {
             auto new_map_pair = MAP(std::ref(input_line));
 
             // Write emitted value to file
-            std::scoped_lock file_lock{output_file_mutex};
-            map_intermediate_file << "<" new_map_pair.first << ">, <" << new_map_pair.second << ">" << std::endl;
+            std::scoped_lock file_lock{map_output_file_mutex};
+            map_output_file << new_map_pair.first << " " << new_map_pair.second << std::endl;
         }   
     }
 
     template<typename key, typename value>
-    void Mapper<key, value>::groupKeys() {
-        sortIntermediateFile();
-
-        map_intermediate_file.open("intermediate_" + map_output_filename, std::ios::in);
-        std::fstream map_output_file;
-        map_output_file.open(map_output_filename, std::ios::out);
-
-        std::string keyPairLine;
-        std::string prevKey = "";
-
-        while(std::getline(map_intermediate_file, keyPairLine)) {
-            auto pos = keyPairLine.find('>, <');
-            if(pos == std::string::npos)
-                throw std::runtime_error("No , delimiter found for keyPair: " + keyPairLine);
-            std::string newKey = keyPairLine.substr(1, pos - 1);
-            std::string newVal = keyPairLine.substr(pos + 4, keyPairLine.length() - pos - 5);
-            if(newKey.compare(prevKey) == 0)
-                map_output_file << ", " << newVal;
-            else {
-                if(prevKey.length() > 0)
-                   map_output_file << "}" << std::endl;
-                map_output_file << "<" << newKey << ">, " << "{" << newVal;  
-            }
-        }
-        map_output_file << "}" << std::endl;
-        map_intermediate_file.close();
-        map_output_file.close();
-    }
-
-    template<typename key, typename value>
-    void Mapper<key, value>::sortIntermediateFile() {
-        std::string intermediate_file = "intermediate_" + map_output_filename;
+    void Mapper<key, value>::sortOutputFile() {
+        // Sort in a separate forked off process
+        int wstatus;
         if(fork() == 0) {
-            execlp("sort", intermediate_file.c_str(), (char*)NULL);
+            auto status = execlp("sort", "sort", map_output_filename.c_str(), "-o", map_output_filename.c_str(), (char*)NULL);
+            std::cerr << "Mapper failed at grouping output file. Exited with status code " << status << std::endl;
         } else {
-            wait(NULL);
+            // Wait foor the child sorting process to finish
+            wait(&wstatus);
+
+            // Sorting failed. Throw an exception
+            if(!WIFEXITED(wstatus))
+                throw std::runtime_error("Mapper failed at grouping output file. Mapper failed with status code " + std::to_string(wstatus));
         }
     }
 }
