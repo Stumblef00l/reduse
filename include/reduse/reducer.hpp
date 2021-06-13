@@ -26,13 +26,13 @@ namespace reduse {
         std::fstream output_file;
         map_key buff_key;
         std::vector<reduce_value> buff_values;
-        std::vector<std::thread> rd_threads;
         std::atomic_bool isProducerDone;
+        bool produced;
+        std::vector<std::thread> rd_threads;
         std::mutex buff_mutex;
         std::mutex output_file_mutex;
         std::condition_variable buff_empty;
         std::condition_variable buff_full;
-        bool produced;
         
         void consumer();
         void producer();
@@ -101,9 +101,9 @@ namespace reduse {
     template<typename map_key, typename map_value, typename reduce_value>
     void Reducer<map_key, map_value, reduce_value>::producer() {
         std::fstream input;
-        input.open(map_output_file, std::ios::in);
+        input.open(map_output_filename, std::ios::in);
         if(!input.is_open())
-            throw std::runtime_error("Unable to open map phase output file: " + map_output_file);
+            throw std::runtime_error("Unable to open map phase output file: " + map_output_filename);
         
         map_key input_key;
         map_value input_value;
@@ -115,7 +115,7 @@ namespace reduse {
             curr_values.push_back(input_value);
             while(input >> input_key) {
                 input >> input_value;
-                if(input_key.compare(curr_key) == 0) {
+                if(input_key == curr_key) {
                     curr_values.push_back(std::move(input_value));
                     continue;
                 }
@@ -148,7 +148,7 @@ namespace reduse {
     template<typename map_key, typename map_value, typename reduce_value>
     void Reducer<map_key, map_value, reduce_value>::put(map_key &new_key, std::vector<map_value> &new_values) { 
         std::unique_lock buff_lock{buff_mutex};
-        buff_empty.wait(buff_lock, [&]() { return !produced });
+        buff_empty.wait(buff_lock, [&]() { return !produced; });
         buff_key = std::move(new_key);
         buff_values = std::move(new_values);
         produced = true;
@@ -159,7 +159,7 @@ namespace reduse {
     template<typename map_key, typename map_value, typename reduce_value>
     bool Reducer<map_key, map_value, reduce_value>::get(map_key &new_key, std::vector<map_value> &new_values) {
         std::unique_lock buff_lock{buff_mutex};
-        buff_full.wait(buff_lock, [&](){ return ( produced || isProducerDone )});
+        buff_full.wait(buff_lock, [&](){ return ( produced || isProducerDone ); });
         if(!produced)
             return false;
         new_key = std::move(buff_key);
