@@ -15,7 +15,7 @@
 
 namespace reduse {
 
-    const int DEFAULT_NUM_MAPPERS = 1;
+    const int DEFAULT_NUM_MAPPERS = 1; // Default number of mapper workers
 
     /** @brief Handles the entire map phase
      * @param key Data type of the key emitted by the MAP method
@@ -41,22 +41,19 @@ namespace reduse {
         std::string buff; // Item buffer
 
 
-        /** @brief Mapper worker routine
-         */
+        /** @brief Mapper worker routine */
         void consumer();
 
-        /** @brief File reader worker routine
-         */
+        /** @brief File reader worker routine */
         void producer();
         
-        /** @brief Sorts the mapper output file for the reduce phase
-         */
+        /** @brief Sorts the mapper output file for the reduce phase */
         void sortOutputFile();
 
     public:
 
-        using key_type = key; // Alias to access the key type of the Mapper
-        using value_type = value; // Alias to access the value type of the Mapper
+        using key_type = key; // Alias to key for public access
+        using value_type = value; // Alias to value for public access
 
         /** @brief Constructor for the Mapper
          * @param _input_filename Relative or absolute path to the file where the mapper needs to draw the input from
@@ -71,8 +68,7 @@ namespace reduse {
             const int _num_mappers = DEFAULT_NUM_MAPPERS
         );
 
-        /** @brief Routine to run the Mapper instance
-         */
+        /** @brief Routine to run the Mapper instance */
         void run();
     };
     
