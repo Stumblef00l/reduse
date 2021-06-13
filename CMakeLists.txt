@@ -14,7 +14,7 @@ set(TEST_SOURCE_DIR ${PROJECT_SOURCE_DIR}/tests)
 configure_file(config.h.in config.h @ONLY)
 
 # Get all the source files
-set(HEADERS include/reduse/mapper.hpp include/reduse/reduser.hpp include/reduse/reduse.hpp)
+set(HEADERS include/reduse/mapper.hpp include/reduse/reducer.hpp include/reduse/reduse.hpp)
 
 # Add the libary target
 add_library(reduse STATIC ${HEADERS})
@@ -51,7 +51,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(googletest)
 
 set(TEST_LIBS gtest_main)
-set(TEST_SRC tests/TestMapper.cpp)
+set(TEST_SRC tests/TestMapper.cpp tests/TestReducer.cpp)
 
 
 enable_testing()

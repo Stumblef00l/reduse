@@ -1,6 +1,5 @@
 #pragma once
 #include <vector>
-#include <queue>
 #include <string>
 #include <iostream>
 #include <fstream>
@@ -15,6 +14,8 @@
 #include <unistd.h>
 
 namespace reduse {
+
+    const int DEFAULT_NUM_MAPPERS = 1;
 
     /** @brief Handles the entire map phase
      * @param key Data type of the key emitted by the MAP method
@@ -48,7 +49,7 @@ namespace reduse {
          */
         void producer();
         
-        /** @brief Sorts the mapper output file for the reduse phase
+        /** @brief Sorts the mapper output file for the reduce phase
          */
         void sortOutputFile();
 
@@ -59,7 +60,7 @@ namespace reduse {
 
         /** @brief Constructor for the Mapper
          * @param _input_filename Relative or absolute path to the file where the mapper needs to draw the input from
-         * @param _map_output_filename Relative or absolute path to the file where the mapper will store its output for the reduse phase
+         * @param _map_output_filename Relative or absolute path to the file where the mapper will store its output for the reduce phase
          * @param _MAP The mapper function
          * @param _num_mappers Number of mappers to run concurrently. Set to 1 by default, for no concurrency
          */
@@ -67,7 +68,7 @@ namespace reduse {
             const std::string& _input_filename,
             const std::string& _map_output_filename,
             const std::function<std::pair<key_type, value>(const std::string&)>& _MAP,
-            const int _num_mappers = 1
+            const int _num_mappers = DEFAULT_NUM_MAPPERS
         );
 
         /** @brief Routine to run the Mapper instance
