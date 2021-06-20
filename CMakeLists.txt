@@ -30,7 +30,7 @@ set(THREADS_PREFERRED_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
 # Set include directory for library
-target_include_directories(reduse PUBLIC ${PROJECT_SOURCE_DIR}/include/reduse ${PROJECT_BINARY_DIR})
+target_include_directories(reduse PUBLIC ${PROJECT_SOURCE_DIR}/include ${PROJECT_BINARY_DIR})
 
 # Set compile options for library
 target_compile_options(reduse PUBLIC
@@ -51,7 +51,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(googletest)
 
 set(TEST_LIBS gtest_main)
-set(TEST_SRC tests/TestMapper.cpp tests/TestReducer.cpp)
+set(TEST_SRC tests/TestMapper.cpp tests/TestReducer.cpp tests/TestReduse.cpp)
 
 
 enable_testing()

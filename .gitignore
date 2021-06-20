@@ -2,3 +2,4 @@ build
 .vscode
 tests/testmap_output.txt
 tests/testreducer_output.txt
+tests/testreduse_output.txt
