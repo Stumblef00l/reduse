@@ -27,6 +27,7 @@ namespace reduse {
         const std::string output_filename; // Output file of the reduce phase
         const std::function<reduce_value(map_key, std::vector<map_value>&)> REDUCE; // Reducer routine
         const int num_reducers; // Number of reducer workers
+        const bool verbose; // Verbose output to console
 
         std::fstream output_file; // Reducer's output filestream
         map_key buff_key; // Item buffer for the key 
@@ -74,7 +75,8 @@ namespace reduse {
             const std::string _map_output_filename,
             const std::string _output_filename,
             const std::function<reduce_value(map_key, std::vector<map_value>&)> _REDUCE,
-            const int _num_reducers = DEFAULT_NUM_REDUCERS
+            const int _num_reducers = DEFAULT_NUM_REDUCERS,
+            const bool _verbose = false
         );
 
         /** @brief Routine to run the Reducer instance */
@@ -88,18 +90,20 @@ namespace reduse {
         const std::string _map_output_filename,
         const std::string _output_filename,
         const std::function<reduce_value(map_key, std::vector<map_value>&)> _REDUCE,
-        const int _num_reducers
+        const int _num_reducers,
+        const bool _verbose
     ):  map_output_filename(_map_output_filename),
         output_filename(_output_filename),
         REDUCE(_REDUCE),
         num_reducers(_num_reducers),
+        verbose(_verbose),
         isProducerDone(false),
         produced(false),
         rd_threads(std::vector<std::thread>(_num_reducers)) {}
 
     template<typename map_key, typename map_value, typename reduce_value>
     void Reducer<map_key, map_value, reduce_value>::run() {
-        std::cout << "Starting reduce phase..." << std::endl;
+        if (verbose) std::cout << "Starting reduce phase..." << std::endl;
 
         // Initialize variables
         isProducerDone = false;
@@ -110,25 +114,25 @@ namespace reduse {
             throw std::runtime_error("Cannot open reduse output file: " + output_filename);
         
         // Initialize the consumers
-        std::cout << "Starting reducers..." << std::endl;
+        if (verbose) std::cout << "Starting reducers..." << std::endl;
         for(auto i = 0; i < num_reducers; i++)
             rd_threads[i] = std::thread(&Reducer<map_key, map_value, reduce_value>::consumer, this);
         
         // Start the producer
         std::thread producer_thread(&Reducer<map_key, map_value, reduce_value>::producer, this);
-        std::cout << "Reducers executing..." << std::endl;
+        if (verbose) std::cout << "Reducers executing..." << std::endl;
 
         // Wait for threads to finish
         producer_thread.join();
         for(auto &consumer_thread: rd_threads)
             consumer_thread.join();
-        std::cout << "Reducers execution completed successfully!";
+        if (verbose) std::cout << "Reducers execution completed successfully!";
 
         // Close the output file
         output_file.close();
 
         // Reducer completed successfully
-        std::cout << "Reduce phase completed successfully!";
+        if (verbose) std::cout << "Reduce phase completed successfully!";
     }
 
     template<typename map_key, typename map_value, typename reduce_value>
