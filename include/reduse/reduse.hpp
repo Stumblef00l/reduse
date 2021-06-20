@@ -9,6 +9,7 @@ namespace reduse {
         const int num_redusers,
         const std::string input_filename,
         const std::function<std::pair<map_key, map_value>(const std::string&)> &MAP, 
-        const std::function<reduce_value(std::pair<map_key, map_value>)> &REDUCE
+        const std::function<reduce_value(std::pair<map_key, map_value>)> &REDUCE,
+        const bool verbose = false
     );
 }

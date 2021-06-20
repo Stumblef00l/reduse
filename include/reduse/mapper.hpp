@@ -29,6 +29,7 @@ namespace reduse {
         const std::string map_output_filename; // Mapper's intermediate output filename
         const std::function<std::pair<key, value>(const std::string&)> MAP; // Mapper routine
         const int num_mappers; // Number of mappers
+        const bool verbose; // Verbose output to console
 
         std::fstream map_output_file; // Mapper's intermediate output filestream
         std::atomic_bool isProducerDone; // Indicates if the producer worker is done reading the file
@@ -60,12 +61,14 @@ namespace reduse {
          * @param _map_output_filename Relative or absolute path to the file where the mapper will store its output for the reduce phase
          * @param _MAP The mapper function
          * @param _num_mappers Number of mappers to run concurrently. Set to 1 by default, for no concurrency
+         * @param _verbose Set true if you want the a verbose output. Useful for debugging
          */
         Mapper(
             const std::string& _input_filename,
             const std::string& _map_output_filename,
             const std::function<std::pair<key_type, value>(const std::string&)>& _MAP,
-            const int _num_mappers = DEFAULT_NUM_MAPPERS
+            const int _num_mappers = DEFAULT_NUM_MAPPERS,
+            const bool _verbose = false
         );
 
         /** @brief Routine to run the Mapper instance */
@@ -79,17 +82,19 @@ namespace reduse {
         const std::string& _input_filename,
         const std::string& _map_output_filename,
         const std::function<std::pair<key, value>(const std::string&)>& _MAP,
-        const int _num_mappers
+        const int _num_mappers,
+        const bool _verbose
     ):  input_filename(_input_filename),
         map_output_filename(_map_output_filename), 
         MAP(_MAP), 
         num_mappers(_num_mappers),
+        verbose(_verbose),
         isProducerDone(false),
         mp_threads(std::vector<std::thread>(_num_mappers)) {}
 
     template<typename key, typename value>
     void Mapper<key, value>::run() {
-        std::cout << "Starting map phase..." << std::endl;
+        if (verbose) std::cout << "Starting map phase..." << std::endl;
 
         // Initialize variables
         isProducerDone = false;
@@ -99,30 +104,30 @@ namespace reduse {
             throw std::runtime_error("Cannot open mapper output file: " + map_output_filename);
 
         // Initialize the consumers
-        std::cout << "Starting mappers..." << std::endl;
+        if (verbose) std::cout << "Starting mappers..." << std::endl;
         for (auto i = 0; i < num_mappers; i++)
             mp_threads[i] = std::thread(&Mapper<key, value>::consumer, this);
         
         // Start the producer
         std::thread producer_thread(&Mapper<key, value>::producer, this);        
-        std::cout << "Mappers executing..." << std::endl;
+        if (verbose) std::cout << "Mappers executing..." << std::endl;
         
         // Wait for threads to finish
         producer_thread.join();
         for(auto &consumer_thread: mp_threads)
             consumer_thread.join();
-        std::cout << "Mappers execution complete successfully!" << std::endl;
+        if (verbose) std::cout << "Mappers execution complete successfully!" << std::endl;
         
         // Close output file
         map_output_file.close();
 
         // Group the values in the map_output_file by sorting it
-        std::cout << "Grouping values by mapping keys..." << std::endl;
+        if (verbose) std::cout << "Grouping values by mapping keys..." << std::endl;
         sortOutputFile();
-        std::cout << "Grouping completed successfully!" << std::endl;
+        if (verbose) std::cout << "Grouping completed successfully!" << std::endl;
 
         // Mapper completed successfully
-        std::cout << "Map phase completed successfully!" << std::endl;
+        if (verbose) std::cout << "Map phase completed successfully!" << std::endl;
     }
 
     template<typename key, typename value>
