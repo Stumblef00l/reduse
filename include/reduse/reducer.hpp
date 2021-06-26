@@ -199,7 +199,7 @@ namespace reduse {
 
             // Try to fetch a new item. If no new item is found, then exit
             if(!get(curr_key, curr_values))
-                continue;
+                break;
             
             // Apply REDUCE on the new item
             reduce_value curr_result = REDUCE(curr_key, curr_values);

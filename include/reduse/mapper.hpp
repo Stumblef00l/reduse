@@ -51,6 +51,12 @@ namespace reduse {
         /** @brief Sorts the mapper output file for the reduce phase */
         void sortOutputFile();
 
+        /** @brief Fetches a new line from the buffer */
+        bool get(std::string& input_buff);
+
+        /** @brief Puts a new line into the buffer */
+        void put(std::string& input_line);
+
     public:
 
         using key_type = key; // Alias to key for public access
@@ -140,15 +146,9 @@ namespace reduse {
 
         // Producer starts writing here
         std::string input_line;
-        while(std::getline(input_file,input_line)) {
-            // Main producer logic
-            std::unique_lock producer_lock{buff_mutex};
-            buff_empty.wait(producer_lock, [&]() { return !produced; });
-            buff = std::move(input_line);
-            produced = true;
-            producer_lock.unlock();
-            buff_full.notify_one();
-        }
+        while(std::getline(input_file,input_line))
+            // Put the new line into the buffer
+            put(input_line);
 
         // Mark producer done
         isProducerDone = true;
@@ -165,16 +165,9 @@ namespace reduse {
         // Consumer repeats till the producer is done
         std::string input_line;
         while(!isProducerDone || produced) {
-            
-            // Wait for a new item to process
-            std::unique_lock consumer_lock{buff_mutex}; 
-            buff_full.wait(consumer_lock, [&]() { return produced || isProducerDone; });
-            if (!produced)
-                continue;
-            input_line = std::move(buff);
-            produced = false;  
-            consumer_lock.unlock();
-            buff_empty.notify_one();
+            // Fetch a new input line 
+            if(!get(input_line))
+                break;
 
             // Process new line
             auto new_map_pair = MAP(std::ref(input_line));
@@ -200,5 +193,30 @@ namespace reduse {
             if(!WIFEXITED(wstatus))
                 throw std::runtime_error("Mapper failed at grouping output file. Mapper failed with status code " + std::to_string(wstatus));
         }
+    }
+
+    template<typename key, typename value>
+    bool Mapper<key, value>::get(std::string& input_buff) {
+         // Wait for a new item to process
+        std::unique_lock consumer_lock{buff_mutex}; 
+        buff_full.wait(consumer_lock, [&]() { return produced || isProducerDone; });
+        if (!produced)
+            return false;
+        input_buff = std::move(buff);
+        produced = false;  
+        consumer_lock.unlock();
+        buff_empty.notify_one();
+        return true;
+    }
+
+    template<typename key, typename value>
+    void Mapper<key, value>::put(std::string& input_line) {
+        // Main producer logic
+        std::unique_lock producer_lock{buff_mutex};
+        buff_empty.wait(producer_lock, [&]() { return !produced; });
+        buff = std::move(input_line);
+        produced = true;
+        producer_lock.unlock();
+        buff_full.notify_one();
     }
 }
