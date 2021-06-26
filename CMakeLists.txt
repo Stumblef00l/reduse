@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Set versions
-set(reduse_VERSION_MAJOR 0 CACHE STRING "major version" FORCE)
+set(reduse_VERSION_MAJOR 1 CACHE STRING "major version" FORCE)
 set(reduse_VERSION_MINOR 0 CACHE STRING "minor version" FORCE)
 set(reduse_VERSION ${reduse_VERSION_MAJOR}.${reduse_VERSION_MINOR} CACHE STRING "version" FORCE)
 
