@@ -42,7 +42,9 @@ target_link_libraries(reduse PUBLIC Threads::Threads)
 # Set destination directories
 set(include_dest "include/reduse-${reduse_VERSION}")
 set(main_lib_dest "lib/reduse-${reduse_VERSION}")
+set(lib_dest "${main_lib_dest}/${CMAKE_BUILD_TYPE}")
 
 #Install the library
-install(TARGETS reduse DESTINATION "${main_lib_dest}")
+install(TARGETS reduse DESTINATION "${lib_dest}")
 install(FILES ${HEADERS} DESTINATION "${include_dest}")
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/config_impl.hpp DESTINATION "${lib_dest}")
