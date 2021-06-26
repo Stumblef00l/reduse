@@ -6,7 +6,7 @@
 #include <exception>
 #include <unordered_map>
 #include <gtest/gtest.h>
-#include <config.h>
+#include <reduse/config.hpp>
 #include <reduse/mapper.hpp>
 
 // Map method for the test TestRun

@@ -5,7 +5,7 @@
 #include <exception>
 #include <unordered_map>
 #include <gtest/gtest.h>
-#include <config.h>
+#include <reduse/config.hpp>
 #include <reduse/reducer.hpp>
 
 // Reduce method for the Reducer
