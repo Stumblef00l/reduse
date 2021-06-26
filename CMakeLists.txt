@@ -22,7 +22,6 @@ add_library(reduse STATIC ${HEADERS})
 # Set include directory for interface reduse
 set_target_properties(reduse PROPERTIES
     LINKER_LANGUAGE CXX
-    INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_SOURCE_DIR}/include
 )
 
 # Fetch libraries
@@ -30,7 +29,10 @@ set(THREADS_PREFERRED_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
 # Set include directory for library
-target_include_directories(reduse PUBLIC ${PROJECT_SOURCE_DIR}/include ${PROJECT_BINARY_DIR})
+target_include_directories(reduse PUBLIC 
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include> 
+    $<INSTALL_INTERFACE:include>
+)
 
 # Set compile options for library
 target_compile_options(reduse PUBLIC
@@ -39,6 +41,42 @@ target_compile_options(reduse PUBLIC
 
 # Link libraries
 target_link_libraries(reduse PUBLIC Threads::Threads)
+
+include(GNUInstallDirs)
+install(
+    TARGETS reduse
+    EXPORT reduseTargets
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+install(
+    EXPORT reduseTargets
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/reduse
+    NAMESPACE reduse::
+    FILE reduseTargets.cmake
+)
+
+include(CMakePackageConfigHelpers)
+configure_package_config_file(
+    "Config.cmake.in"
+    "reduseConfig.cmake"
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/reduse
+    PATH_VARS
+        CMAKE_INSTALL_LIBDIR
+)
+
+write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/reduseConfigVersion.cmake
+    VERSION 1.0.0
+    COMPATIBILITY SameMajorVersion
+)
+
+### Install Config and ConfigVersion files
+install(
+    FILES "${CMAKE_CURRENT_BINARY_DIR}/reduseConfig.cmake"
+          "${CMAKE_CURRENT_BINARY_DIR}/reduseConfigVersion.cmake"
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/reduse"
+)
 
 
 # ----- Tests -----
@@ -50,7 +88,7 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(googletest)
 
-set(TEST_LIBS gtest_main)
+set(TEST_LIBS gtest_main reduse)
 set(TEST_SRC tests/TestMapper.cpp tests/TestReducer.cpp tests/TestReduse.cpp)
 
 
@@ -66,7 +104,7 @@ target_compile_options(test_reduse PUBLIC
     "-Wall" "-Werror" "-g"
 )
 
-target_link_libraries(test_reduse PRIVATE ${TEST_LIBS} reduse)
+target_link_libraries(test_reduse PRIVATE ${TEST_LIBS})
 
 include(GoogleTest)
 gtest_discover_tests(test_reduse)
