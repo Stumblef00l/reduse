@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 # Set the project name
-project(reduse VERSION 1.0)
+project(reduse)
 
 # Set C++ standard to 17
 set(CMAKE_CXX_STANDARD 17)
@@ -34,17 +34,15 @@ target_include_directories(reduse PUBLIC
     $<BUILD_INTERFACE:${reduse_SOURCE_DIR}/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
     $<INSTALL_INTERFACE:${include_dest}>
-    $<INSTALL_INTEFACE:${lib_dest}
-)
-
-# Set include directory for interface reduse
-set_target_properties(reduse PROPERTIES
-    LINKER_LANGUAGE CXX
+    $<INSTALL_INTERFACE:${lib_dest}>
 )
 
 # Fetch libraries
 set(THREADS_PREFERRED_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
+
+# Set linker language
+set_target_properties(reduse PROPERTIES LINKER_LANGUAGE CXX)
 
 # Link libraries
 target_link_libraries(reduse PUBLIC Threads::Threads)
