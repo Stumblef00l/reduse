@@ -70,6 +70,6 @@ write_basic_package_version_file(${version_file}
 
 # Install files
 
-install(FILES include/reduse/reduse.hpp DESTINATION ${include_dest}/reduse)
+install(FILES ${HEADERS} DESTINATION ${include_dest}/reduse)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/config_impl.hpp DESTINATION ${include_dest}/reduse)
 install(FILES ${VERSION_FILE} DESTINATION ${config_dest})
