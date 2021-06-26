@@ -12,7 +12,12 @@ set(reduse_VERSION_MAJOR 1 CACHE STRING "major version" FORCE)
 set(reduse_VERSION_MINOR 0 CACHE STRING "minor version" FORCE)
 set(reduse_VERSION ${reduse_VERSION_MAJOR}.${reduse_VERSION_MINOR} CACHE STRING "version" FORCE)
 
+# Config file
+configure_file("config.hpp.in" "${CMAKE_CURRENT_BINARY_DIR}/config_impl.hpp")
+
 # Set destination directories
+include(GNUInstallDirs)
+
 set(include_dest "${CMAKE_INSTALL_INCLUDEDIR}/reduse")
 set(config_dest "${CMAKE_INSTALL_LIBDIR}/reduse/cmake")
 set(lib_dest "${CMAKE_INSTALL_LIBDIR}")
