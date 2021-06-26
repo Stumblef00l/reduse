@@ -17,47 +17,50 @@ std::pair<int, std::string> MAP(const std::string& s) {
 }
 
 TEST(TestMapper, TestRun) {
-    // Define the input file
-    std::string input_filename = TEST_SOURCE_DIR;
-    input_filename += "/testmap_input.txt";
-    std::string output_filename = TEST_SOURCE_DIR;
-    output_filename += "/testmap_output.txt";
 
-    // Create the mapper and run it
-    try {
-        reduse::Mapper<int, std::string> mapper = {input_filename, output_filename, MAP, 4};
-        mapper.run();
-    } catch (const std::exception &e) {
-        std::cout << e.what();
-        std::terminate();
+    for(auto test_reps = 1; test_reps <= 1000; test_reps++) {
+        // Define the input file
+        std::string input_filename = TEST_SOURCE_DIR;
+        input_filename += "/testmap_input.txt";
+        std::string output_filename = TEST_SOURCE_DIR;
+        output_filename += "/testmap_output.txt";
+
+        // Create the mapper and run it
+        try {
+            reduse::Mapper<int, std::string> mapper = {input_filename, output_filename, MAP, 4};
+            mapper.run();
+        } catch (const std::exception &e) {
+            std::cout << e.what();
+            std::terminate();
+        }
+
+        // Read the file and test it
+        std::fstream outfile_reader;
+        outfile_reader.open(output_filename, std::ios::in);
+        ASSERT_TRUE(outfile_reader.is_open());
+
+        // We will use the these to test the file
+        auto ct = 0;
+        std::unordered_map<int, std::vector<std::string>> outfile_map;
+        
+        // Read and add each line to outfile_map
+        int key;
+        std::string value;
+        while(outfile_reader >> key) {
+            ct++;
+            outfile_reader >> value;
+            outfile_map[key].push_back(value);
+        }
+
+        // Close the mapper output file
+        outfile_reader.close();
+
+        // Assertions
+        ASSERT_FALSE(outfile_reader.is_open());
+        ASSERT_EQ(ct, 5);
+        ASSERT_EQ((int)(outfile_map.size()), 3);
+        ASSERT_EQ((int)(outfile_map[1].size()), 2);
+        ASSERT_EQ((int)(outfile_map[2].size()), 1);
+        ASSERT_EQ((int)(outfile_map[3].size()), 2);
     }
-
-    // Read the file and test it
-    std::fstream outfile_reader;
-    outfile_reader.open(output_filename, std::ios::in);
-    ASSERT_TRUE(outfile_reader.is_open());
-
-    // We will use the these to test the file
-    auto ct = 0;
-    std::unordered_map<int, std::vector<std::string>> outfile_map;
-    
-    // Read and add each line to outfile_map
-    int key;
-    std::string value;
-    while(outfile_reader >> key) {
-        ct++;
-        outfile_reader >> value;
-        outfile_map[key].push_back(value);
-    }
-
-    // Close the mapper output file
-    outfile_reader.close();
-
-    // Assertions
-    ASSERT_FALSE(outfile_reader.is_open());
-    ASSERT_EQ(ct, 5);
-    ASSERT_EQ((int)(outfile_map.size()), 3);
-    ASSERT_EQ((int)(outfile_map[1].size()), 2);
-    ASSERT_EQ((int)(outfile_map[2].size()), 1);
-    ASSERT_EQ((int)(outfile_map[3].size()), 2);
 }
