@@ -164,13 +164,13 @@ namespace reduse {
     void Mapper<key, value>::consumer() {
         // Consumer repeats till the producer is done
         std::string input_line;
-        while(!isProducerDone) {
+        while(!isProducerDone || produced) {
             
             // Wait for a new item to process
             std::unique_lock consumer_lock{buff_mutex}; 
             buff_full.wait(consumer_lock, [&]() { return produced || isProducerDone; });
-            if (isProducerDone && !produced)
-                break;
+            if (!produced)
+                continue;
             input_line = std::move(buff);
             produced = false;  
             consumer_lock.unlock();

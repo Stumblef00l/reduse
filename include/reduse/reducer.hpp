@@ -195,11 +195,11 @@ namespace reduse {
         std::vector<map_value> curr_values;
 
         // Run until producer is done
-        while(!isProducerDone) {
+        while(!isProducerDone || produced) {
 
             // Try to fetch a new item. If no new item is found, then exit
             if(!get(curr_key, curr_values))
-                break;
+                continue;
             
             // Apply REDUCE on the new item
             reduce_value curr_result = REDUCE(curr_key, curr_values);

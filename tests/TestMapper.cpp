@@ -18,7 +18,7 @@ std::pair<int, std::string> MAP(const std::string& s) {
 
 TEST(TestMapper, TestRun) {
 
-    for(auto test_reps = 1; test_reps <= 1000; test_reps++) {
+    for(auto test_reps = 1; test_reps <= 500; test_reps++) {
         // Define the input file
         std::string input_filename = TEST_SOURCE_DIR;
         input_filename += "/testmap_input.txt";

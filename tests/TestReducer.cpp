@@ -18,7 +18,7 @@ int REDUCE(int key, std::vector<int>& values) {
 
 TEST(TestReducer, TestRun) {
 
-    for(auto test_reps = 1; test_reps <= 1000; test_reps++) {
+    for(auto test_reps = 1; test_reps <= 500; test_reps++) {
         // Define the test filenames
         std::string map_output_filename = TEST_SOURCE_DIR;
         map_output_filename += "/testreducer_map_output.txt";
