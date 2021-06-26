@@ -13,9 +13,10 @@ set(reduse_VERSION_MINOR 0 CACHE STRING "minor version" FORCE)
 set(reduse_VERSION ${reduse_VERSION_MAJOR}.${reduse_VERSION_MINOR} CACHE STRING "version" FORCE)
 
 # Set destination directories
-set(include_dest "include/reduse-${reduse_VERSION}")
-set(main_lib_dest "lib/reduse-${reduse_VERSION}")
-set(lib_dest "${main_lib_dest}/${CMAKE_BUILD_TYPE}")
+set(include_dest "${CMAKE_INSTALL_INCLUDEDIR}/reduse")
+set(config_dest "${CMAKE_INSTALL_LIBDIR}/reduse/cmake")
+set(lib_dest "${CMAKE_INSTALL_LIBDIR}")
+set(additional_data_dest "${CMAKE_INSTALL_DATADIR}/reduse")
 
 # Enable testing
 enable_testing()
@@ -24,7 +25,7 @@ enable_testing()
 add_subdirectory(tests)
 
 # Get all the source files
-set(HEADERS include/reduse/mapper.hpp include/reduse/reducer.hpp include/reduse/reduse.hpp)
+set(HEADERS include/reduse/mapper.hpp include/reduse/reducer.hpp include/reduse/reduse.hpp include/reduse/config.hpp)
 
 # Add the libary target
 add_library(reduse STATIC ${HEADERS})
@@ -34,7 +35,7 @@ target_include_directories(reduse PUBLIC
     $<BUILD_INTERFACE:${reduse_SOURCE_DIR}/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
     $<INSTALL_INTERFACE:${include_dest}>
-    $<INSTALL_INTERFACE:${lib_dest}>
+    PRIVATE ${reduse_SOURCE_DIR}/include
 )
 
 # Fetch libraries
@@ -45,10 +46,25 @@ find_package(Threads REQUIRED)
 set_target_properties(reduse PROPERTIES LINKER_LANGUAGE CXX)
 
 # Link libraries
-target_link_libraries(reduse PUBLIC Threads::Threads)
+target_link_libraries(reduse PRIVATE Threads::Threads)
 
 #Install the library
-install(TARGETS reduse EXPORT reduse DESTINATION "${lib_dest}")
-install(FILES ${HEADERS} DESTINATION "${include_dest}")
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/config_impl.hpp DESTINATION "${lib_dest}")
-install(EXPORT reduse DESTINATION "${lib_dest}")
+install(TARGETS reduse EXPORT reduse_targets 
+    LIBRARY DESTINATION ${lib_dest}
+    ARCHIVE DESTINATION ${lib_dest})
+
+install(EXPORT reduse_targets DESTINATION ${config_dest} FILE reduse-config.cmake)
+
+# Version File
+include(CMakePackageConfigHelpers)
+set(version_file "${CMAKE_CURRENT_BINARY_DIR}/cmake/reduse-config-version.cmake")
+write_basic_package_version_file(${version_file}
+    VERSION ${reduse_VERSION}
+    COMPATIBILITY AnyNewerVersion
+)
+
+# Install files
+
+install(FILES include/reduse/reduse.hpp DESTINATION ${include_dest}/reduse)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/config_impl.hpp DESTINATION ${include_dest}/reduse)
+install(FILES ${VERSION_FILE} DESTINATION ${config_dest})
