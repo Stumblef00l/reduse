@@ -12,6 +12,9 @@ set(reduse_VERSION_MAJOR 0 CACHE STRING "major version" FORCE)
 set(reduse_VERSION_MINOR 0 CACHE STRING "minor version" FORCE)
 set(reduse_VERSION ${reduse_VERSION_MAJOR}.${reduse_VERSION_MINOR} CACHE STRING "version" FORCE)
 
+# Enable testing
+enable_testing()
+
 # Add subdirectories
 add_subdirectory(tests)
 

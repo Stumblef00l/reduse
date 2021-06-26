@@ -14,8 +14,6 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(googletest)
 
-enable_testing()
-
 add_executable(test_reduse ${TEST_SRC})
 target_include_directories(test_reduse 
     PUBLIC 
