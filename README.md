@@ -11,7 +11,7 @@ This package can be installed globally on your system.
 
 ```
 cmake ..
-cmake --build .
+cmake --build . --config Release --target reduse
 sudo make install
 ```
 
