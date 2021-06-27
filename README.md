@@ -110,5 +110,14 @@ The `output.txt` file produced by running this looks like this.
 323
 15
 ```
+## Testing
+
+To build tests, inside the `build/` directory, run the following command.
+
+```
+cmake --build . --config Debug --target test_reduse
+```
+
+After building, to run tests, inside `build/tests` run `test_reduse`.
 
 
