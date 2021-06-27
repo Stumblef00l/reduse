@@ -59,7 +59,22 @@ The parameters are described below.
 7. `verbose`: Turn this to true for a more verbose output. Useful for debugging. Set to `false` by default.
 
 
-Here's an example to demonstrate this usage. 
+## Example
+
+Lets take an input file `input.txt` with the below contents:
+
+```
+12
+34
+1321
+2323
+311
+```
+
+We have a task where we want to group these numbers by their leading digit, remove the leading digit from each number, sum the numbers in each group and write the list of sums of each group to a file `output.txt`.
+
+The code stub below does performs this task efficiently in a few lines.
+
 
 ```cpp
 #include <vector>
@@ -69,6 +84,31 @@ Here's an example to demonstrate this usage.
 
 using namespace std;
 
+pair<int, int> MAP(const string& s) {
+    auto a = (s[0] - '0');
+    auto b = s.substr(1, s.length() - 1);
+    return {a, stoi(b)};
+}
+
+int REDUCE(int key, vector<int>& values) {
+    auto sum = 0;
+    for(auto &it: values)
+        sum += it;
+    return sum;
+}
+
+int main() {
+    reduse::reduse<int, int, int>("input.txt", "output.txt", MAP, REDUCE, 3, 3);
+}
+
+```
+
+The `output.txt` file produced by running this looks like this.
+
+```
+323
+323
+15
 ```
 
 
