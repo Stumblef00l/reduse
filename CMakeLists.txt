@@ -58,18 +58,18 @@ install(TARGETS reduse EXPORT reduse_targets
     LIBRARY DESTINATION ${lib_dest}
     ARCHIVE DESTINATION ${lib_dest})
 
+# Install the config file
 install(EXPORT reduse_targets DESTINATION ${config_dest} FILE reduse-config.cmake)
 
-# Version File
+# Install version ile
 include(CMakePackageConfigHelpers)
 set(version_file "${CMAKE_CURRENT_BINARY_DIR}/cmake/reduse-config-version.cmake")
 write_basic_package_version_file(${version_file}
     VERSION ${reduse_VERSION}
     COMPATIBILITY AnyNewerVersion
 )
+install(FILES ${VERSION_FILE} DESTINATION ${config_dest})
 
-# Install files
-
+# Install headers
 install(FILES ${HEADERS} DESTINATION ${include_dest}/reduse)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/config_impl.hpp DESTINATION ${include_dest}/reduse)
-install(FILES ${VERSION_FILE} DESTINATION ${config_dest})
