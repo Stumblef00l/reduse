@@ -46,7 +46,7 @@ The template parameters are described below.
 2. `map_value` Type of the value emmitted by the MAP method.
 3. `reduce_value`: Type of the value emmitted by the REDUCE method.
 
-**NOTE**: Both `map_key` and `map_value` should have both `<<` and `>>` operators defined and `reduce_value` must have a `<<` opoerator defined.
+**NOTE**: Both `map_key` and `map_value` should have both `<<` and `>>` operators defined and `reduce_value` must have a `<<` operator defined.
 
 The parameters are described below.
 
