@@ -73,7 +73,7 @@ Lets take an input file `input.txt` with the below contents:
 
 We have a task where we want to group these numbers by their leading digit, remove the leading digit from each number, sum the numbers in each group and write the list of sums of each group to a file `output.txt`.
 
-The code stub below does performs this task efficiently in a few lines.
+The code stub below performs this task efficiently in a few lines.
 
 
 ```cpp
