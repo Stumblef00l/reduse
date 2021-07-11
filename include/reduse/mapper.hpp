@@ -1,4 +1,9 @@
 #pragma once
+
+#ifndef _REDUSE_MAIN_
+#error Do not include reduse/mapper.hpp directly. Only reduse/reduse.hpp includes are allowed
+#endif
+
 #include <vector>
 #include <string>
 #include <iostream>

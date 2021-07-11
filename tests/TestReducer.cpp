@@ -1,3 +1,5 @@
+#define _REDUSE_MAIN_
+
 #include <iostream>
 #include <fstream>
 #include <vector>

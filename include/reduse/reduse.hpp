@@ -1,4 +1,6 @@
 #pragma once
+#define _REDUSE_MAIN_
+
 #include <iostream>
 #include <vector>
 #include <string>
@@ -33,3 +35,5 @@ namespace reduse {
         }
     }
 }
+
+#undef _REDUSE_MAIN

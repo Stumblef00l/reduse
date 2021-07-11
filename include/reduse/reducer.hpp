@@ -1,4 +1,9 @@
 #pragma once
+
+#ifndef _REDUSE_MAIN_
+#error Do not include reduse/reducer.hpp directly. Only reduse/reduse.hpp includes are allowed
+#endif
+
 #include <string>
 #include <vector>
 #include <atomic>
