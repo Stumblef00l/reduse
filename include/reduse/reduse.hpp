@@ -27,7 +27,7 @@ namespace reduse {
         try {
             Mapper<map_key, map_value, reduse_mode> mapper(input_filename, map_output_filename, MAP, num_mappers);
             mapper.run();
-            Reducer<map_key, map_value, reduce_value> reducer(map_output_filename, output_filename, REDUCE, num_reducers);
+            Reducer<map_key, map_value, reduce_value, reduse_mode> reducer(map_output_filename, output_filename, REDUCE, num_reducers);
             reducer.run();
             if(remove(map_output_filename.c_str()) != 0)
                 throw std::runtime_error("Unable to delete " + map_output_filename);

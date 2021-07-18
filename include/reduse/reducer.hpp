@@ -15,6 +15,8 @@
 #include <fstream>
 #include <functional>
 #include <exception>
+#include <reduse/modes.hpp>
+#include <reduse/stopwatch.hpp>
 
 namespace reduse {
 
@@ -24,8 +26,9 @@ namespace reduse {
      * @param map_key Type of the key produced during the mapping phase
      * @param map_value Type of the value produced during the mapping phase
      * @param reduce_value Type of the value to be produced in reduce phase
+     * @param mode Mode of execution of the Reducer
      */
-    template<typename map_key, typename map_value, typename reduce_value>
+    template<typename map_key, typename map_value, typename reduce_value, const Modes mode = DEFAULT_REDUSE_MODE>
     class Reducer {
     private:
 
@@ -33,7 +36,6 @@ namespace reduse {
         const std::string output_filename; // Output file of the reduce phase
         const std::function<reduce_value(map_key, std::vector<map_value>&)> REDUCE; // Reducer routine
         const int num_reducers; // Number of reducer workers
-        const bool verbose; // Verbose output to console
 
         std::fstream output_file; // Reducer's output filestream
         map_key buff_key; // Item buffer for the key 
@@ -65,11 +67,24 @@ namespace reduse {
          */
         bool get(map_key &new_key, std::vector<map_value> &new_values);
 
+
+        /** @brief Logs onto console 
+         * @param statement Statement displayed
+         */
+        inline void log(const std::string statement);
+        
+        /** @brief Times an operation if the mode is set to TIMING
+         * @param opDesc Description of the operation
+         * @param op The operation
+         */
+        void timeOperation(const std::string opDesc, const std::function<void(void)>& op);
+
     public:
 
         using map_key_type = map_key; // Alias to map_key for public access
         using map_value_type = map_value; // Alias to map_value for public access
         using reduce_value_type = reduce_value; // Alias to reduce_value for public access
+        const Modes reducer_mode = mode; // Alias to mode for public access
 
         /** @brief Constructor for the Reducer object 
          * @param _map_output_filename Filename for the output file produced by the mapper phase
@@ -81,8 +96,7 @@ namespace reduse {
             const std::string _map_output_filename,
             const std::string _output_filename,
             const std::function<reduce_value(map_key, std::vector<map_value>&)> _REDUCE,
-            const int _num_reducers = DEFAULT_NUM_REDUCERS,
-            const bool _verbose = false
+            const int _num_reducers = DEFAULT_NUM_REDUCERS
         );
 
         /** @brief Routine to run the Reducer instance */
@@ -91,25 +105,23 @@ namespace reduse {
 
     // ------- Definitions --------
 
-    template<typename map_key, typename map_value, typename reduce_value>
-    Reducer<map_key, map_value, reduce_value>::Reducer(
+    template<typename map_key, typename map_value, typename reduce_value, const Modes mode>
+    Reducer<map_key, map_value, reduce_value, mode>::Reducer(
         const std::string _map_output_filename,
         const std::string _output_filename,
         const std::function<reduce_value(map_key, std::vector<map_value>&)> _REDUCE,
-        const int _num_reducers,
-        const bool _verbose
+        const int _num_reducers
     ):  map_output_filename(_map_output_filename),
         output_filename(_output_filename),
         REDUCE(_REDUCE),
         num_reducers(_num_reducers),
-        verbose(_verbose),
         isProducerDone(false),
         produced(false),
         rd_threads(std::vector<std::thread>(_num_reducers)) {}
 
-    template<typename map_key, typename map_value, typename reduce_value>
-    void Reducer<map_key, map_value, reduce_value>::run() {
-        if (verbose) std::cout << "Starting reduce phase..." << std::endl;
+    template<typename map_key, typename map_value, typename reduce_value, const Modes mode>
+    void Reducer<map_key, map_value, reduce_value, mode>::run() {
+        log("Starting reduce phase...");
 
         // Initialize variables
         isProducerDone = false;
@@ -120,29 +132,29 @@ namespace reduse {
             throw std::runtime_error("Cannot open reduse output file: " + output_filename);
         
         // Initialize the consumers
-        if (verbose) std::cout << "Starting reducers..." << std::endl;
+        log("Starting reducers...");
         for(auto i = 0; i < num_reducers; i++)
             rd_threads[i] = std::thread(&Reducer<map_key, map_value, reduce_value>::consumer, this);
         
         // Start the producer
         std::thread producer_thread(&Reducer<map_key, map_value, reduce_value>::producer, this);
-        if (verbose) std::cout << "Reducers executing..." << std::endl;
+        log("Reducers executing...");
 
         // Wait for threads to finish
         producer_thread.join();
         for(auto &consumer_thread: rd_threads)
             consumer_thread.join();
-        if (verbose) std::cout << "Reducers execution completed successfully!";
+        log("Reducers execution completed successfully!");
 
         // Close the output file
         output_file.close();
 
         // Reducer completed successfully
-        if (verbose) std::cout << "Reduce phase completed successfully!";
+        log("Reduce phase completed successfully!");
     }
 
-    template<typename map_key, typename map_value, typename reduce_value>
-    void Reducer<map_key, map_value, reduce_value>::producer() {
+    template<typename map_key, typename map_value, typename reduce_value, const Modes mode>
+    void Reducer<map_key, map_value, reduce_value, mode>::producer() {
         // Open the input file
         std::fstream input;
         input.open(map_output_filename, std::ios::in);
@@ -158,7 +170,6 @@ namespace reduse {
         // Input the initial item. Continue producer only if there exists an initial item
         if(input >> curr_key) {
             input >> input_value;
-            curr_values.push_back(input_value);
 
             // Input a new object everytime
             while(input >> input_key) {
@@ -171,16 +182,16 @@ namespace reduse {
                 }
 
                 // New key, so put the old key and set of values into the buffer
-                put(curr_key, curr_values);
+                timeOperation("Reducer producer: PUT", [&]() { put(curr_key, curr_values); });
 
                 // Update old key and set of values with new item
-                curr_key = std::move(input_key);
+                timeOperation("Reducer producer: Update Key", [&]() { curr_key = std::move(input_key); });
                 curr_values.clear();
                 curr_values.push_back(std::move(input_value));
             }
 
             // Put the last object into the buffer
-            put(curr_key, curr_values);
+            timeOperation("Reducer producer: PUT", [&]() { put(curr_key, curr_values); });
         }
 
         // Mark the producer done
@@ -193,8 +204,8 @@ namespace reduse {
         input.close();
     }
 
-    template<typename map_key, typename map_value, typename reduce_value>
-    void Reducer<map_key, map_value, reduce_value>::consumer() {
+    template<typename map_key, typename map_value, typename reduce_value, const Modes mode>
+    void Reducer<map_key, map_value, reduce_value, mode>::consumer() {
 
         // Consumer variables
         map_key curr_key;
@@ -204,7 +215,9 @@ namespace reduse {
         while(!isProducerDone || produced) {
 
             // Try to fetch a new item. If no new item is found, then exit
-            if(!get(curr_key, curr_values))
+            auto fetched = false;
+            timeOperation("Reducer consumer GET", [&](){ fetched = get(curr_key, curr_values); }); 
+            if(!fetched)
                 break;
             
             // Apply REDUCE on the new item
@@ -212,28 +225,28 @@ namespace reduse {
 
             // Write the new item to the output file
             std::scoped_lock output_file_lock{output_file_mutex};
-            output_file << curr_result << std::endl;
+            timeOperation("Reducer consumer: Write to output file", [&]() { output_file << curr_result << std::endl; });
         }
     }
 
-    template<typename map_key, typename map_value, typename reduce_value>
-    void Reducer<map_key, map_value, reduce_value>::put(map_key &new_key, std::vector<map_value> &new_values) {
+    template<typename map_key, typename map_value, typename reduce_value, const Modes mode>
+    void Reducer<map_key, map_value, reduce_value, mode>::put(map_key &new_key, std::vector<map_value> &new_values) {
         // Wait for the buffer to be empty
         std::unique_lock buff_lock{buff_mutex};
         buff_empty.wait(buff_lock, [&]() { return !produced; });
         
         // Put the item into the buffer and turn produced as true
-        buff_key = std::move(new_key);
-        buff_values = std::move(new_values);
+        timeOperation("Reducer put: Move new_key to buffer", [&]() { buff_key = std::move(new_key); });
+        timeOperation("Reducer put: Move new_values to buffer", [&]() { buff_values = std::move(new_values); });
         produced = true;
 
         // Nofify one sleeping consumer of the available item
-        buff_lock.unlock();
-        buff_full.notify_one();
+        timeOperation("Redcuer put: Buffer unlock", [&]() { buff_lock.unlock(); });
+        timeOperation("Reducer put: Buffer fully single notify", [&]() { buff_full.notify_one(); });
     }
 
-    template<typename map_key, typename map_value, typename reduce_value>
-    bool Reducer<map_key, map_value, reduce_value>::get(map_key &new_key, std::vector<map_value> &new_values) {
+    template<typename map_key, typename map_value, typename reduce_value, const Modes mode>
+    bool Reducer<map_key, map_value, reduce_value, mode>::get(map_key &new_key, std::vector<map_value> &new_values) {
         // Wait for the buffer to be full
         std::unique_lock buff_lock{buff_mutex};
         buff_full.wait(buff_lock, [&](){ return ( produced || isProducerDone ); });
@@ -243,14 +256,33 @@ namespace reduse {
             return false;
 
         // Put the buffered item into the consumer's local buffer and marked produced as false
-        new_key = std::move(buff_key);
-        new_values = std::move(buff_values);
+        timeOperation("Reducer get: new_key moved from buffer", [&]() { new_key = std::move(buff_key); });
+        timeOperation("Reducer get: new_values moved from buffer", [&]() { new_values = std::move(buff_values); });
         produced = false;
 
         // Signal that the buffer is empty
-        buff_lock.unlock();
-        buff_empty.notify_one();
+        timeOperation("Reducer get: buffer unlock", [&]() { buff_lock.unlock(); });
+        timeOperation("Reducer get: buffer empty single notify", [&]() { buff_empty.notify_one(); });
         return true;
+    }
+
+    template<typename map_key, typename map_value, typename reduce_value, const Modes mode>
+    inline void Reducer<map_key, map_value, reduce_value, mode>::log(const std::string statement) {
+        if constexpr(mode == Modes::VERBOSE || mode == reduse::Modes::TIMING) {
+            std::cout << statement << "\n";
+        } else { 
+            ; 
+        }
+    }
+
+    template<typename map_key, typename map_value, typename reduce_value, const Modes mode>
+    inline void Reducer<map_key, map_value, reduce_value, mode>::timeOperation(const std::string opDesc, const std::function<void(void)>& op) {
+        if constexpr(mode == Modes::TIMING) {
+            Stopwatch watch = Stopwatch(opDesc);
+            op();
+        } else {
+            op();
+        }
     }
 }
 
