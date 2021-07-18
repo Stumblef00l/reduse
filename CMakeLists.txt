@@ -30,7 +30,14 @@ enable_testing()
 add_subdirectory(tests)
 
 # Get all the source files
-set(HEADERS include/reduse/mapper.hpp include/reduse/reducer.hpp include/reduse/reduse.hpp include/reduse/config.hpp)
+set(HEADERS 
+    include/reduse/mapper.hpp 
+    include/reduse/reducer.hpp 
+    include/reduse/reduse.hpp
+    include/reduse/stopwatch.hpp
+    include/reduse/modes.hpp
+    include/reduse/config.hpp
+)
 
 # Add the libary target
 add_library(reduse STATIC ${HEADERS})

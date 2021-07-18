@@ -21,10 +21,6 @@ target_include_directories(test_reduse
     ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-target_compile_options(test_reduse PUBLIC
-    "-Wall" "-Werror" "-g"
-)
-
 target_link_libraries(test_reduse PRIVATE ${TEST_LIBS})
 
 include(GoogleTest)

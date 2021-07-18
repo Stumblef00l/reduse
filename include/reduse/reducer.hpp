@@ -1,4 +1,5 @@
-#pragma once
+#ifndef REDUSE_REDUCE_HPP_
+#define REDUSE_REDUCE_HPP_
 
 #ifndef _REDUSE_MAIN_
 #error Do not include reduse/reducer.hpp directly. Only reduse/reduse.hpp includes are allowed
@@ -252,3 +253,5 @@ namespace reduse {
         return true;
     }
 }
+
+#endif
